@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>J.A.R.V.I.S.</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: #000d1a; color: #00d4ff; font-family: 'Courier New', monospace; height: 100dvh; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; overflow: hidden; }
+body::before { content:''; position:fixed; inset:0; background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,212,255,0.008) 4px); pointer-events:none; z-index:0; }
+
+#header { background: rgba(0,6,14,0.98); border-bottom: 1px solid #002a40; padding: 11px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; z-index: 100; }
+#arc { width: 42px; height: 42px; border-radius: 50%; border: 2px solid #00d4ff; display: flex; align-items: center; justify-content: center; transition: all 0.3s; flex-shrink: 0; }
+#arc-inner { width: 19px; height: 19px; border-radius: 50%; background: #00d4ff; transition: all 0.3s; }
+#title-name { font-size: 17px; font-weight: 700; letter-spacing: 4px; color: #fff; margin-left: 12px; }
+#status-label { font-size: 8px; letter-spacing: 2px; color: #00d4ff; margin-top: 2px; margin-left: 12px; transition: color 0.3s; }
+#header-right { display: flex; gap: 8px; }
+#modules-btn, #memory-btn { background: rgba(0,212,255,0.06); border: 1px solid rgba(0,212,255,0.35); border-radius: 7px; padding: 8px 10px; color: #00d4ff; font-size: 10px; letter-spacing: 1px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+
+#modules-panel { display: none; background: rgba(0,4,10,0.99); border-bottom: 1px solid #002a40; padding: 14px 16px; flex-shrink: 0; overflow-y: auto; max-height: 60vh; }
+#modules-panel.open { display: block; }
+.panel-label { font-size: 9px; letter-spacing: 2px; color: #00d4ff; opacity: 0.45; margin-bottom: 10px; }
+.mcp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 14px; }
+.mcp-btn { display: flex; align-items: center; gap: 8px; padding: 10px 11px; background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.18); border-radius: 7px; cursor: pointer; font-family: inherit; color: #00d4ff; font-size: 10px; letter-spacing: 1px; width: 100%; }
+.mcp-dot { width: 5px; height: 5px; border-radius: 50%; background: #00ff88; margin-left: auto; flex-shrink: 0; }
+.quick-list { display: flex; flex-direction: column; gap: 6px; }
+.quick-btn { padding: 9px 12px; background: none; border: 1px solid rgba(0,212,255,0.14); border-radius: 6px; color: #7dd4f0; font-size: 11px; cursor: pointer; font-family: inherit; text-align: left; width: 100%; }
+
+#memory-panel { display: none; background: rgba(0,4,10,0.99); border-bottom: 1px solid #002a40; padding: 14px 16px; flex-shrink: 0; overflow-y: auto; max-height: 50vh; }
+#memory-panel.open { display: block; }
+#memory-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.memory-item { padding: 8px 12px; background: rgba(0,212,255,0.04); border: 1px solid rgba(0,212,255,0.15); border-radius: 6px; font-size: 11px; color: #7dd4f0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.memory-item span { flex: 1; }
+.memory-del { background: none; border: none; color: rgba(255,68,68,0.5); cursor: pointer; font-size: 14px; padding: 0 4px; }
+#memory-input-row { display: flex; gap: 8px; }
+#memory-input { flex: 1; background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.22); border-radius: 7px; padding: 9px 12px; color: #fff; font-size: 12px; font-family: inherit; outline: none; }
+#memory-save-btn { padding: 9px 14px; background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.35); border-radius: 7px; color: #00d4ff; font-size: 10px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+#memory-clear-btn { padding: 9px 12px; background: rgba(255,50,50,0.08); border: 1px solid rgba(255,50,50,0.25); border-radius: 7px; color: #ff5555; font-size: 10px; cursor: pointer; font-family: inherit; }
+
+#messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.msg-row { display: flex; align-items: flex-start; gap: 10px; }
+.msg-row.user { flex-direction: row-reverse; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+.avatar.j { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; }
+.avatar.s { background: rgba(0,255,136,0.1); border: 1px solid #00ff88; color: #00ff88; }
+.bubble { max-width: 82%; padding: 10px 14px; font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+.bubble.j { background: rgba(0,212,255,0.055); border: 1px solid rgba(0,212,255,0.18); border-radius: 2px 10px 10px 10px; color: #9de0f8; }
+.bubble.s { background: rgba(0,255,136,0.055); border: 1px solid rgba(0,255,136,0.18); border-radius: 10px 2px 10px 10px; color: #7dffc0; }
+.bubble-label { font-size: 8px; letter-spacing: 2px; color: #00d4ff; opacity: 0.5; margin-bottom: 5px; }
+.thinking { display: flex; gap: 5px; align-items: center; padding: 13px 17px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #ffaa00; animation: bounce 1s ease-in-out infinite; }
+.dot:nth-child(2) { animation-delay: 0.18s; }
+.dot:nth-child(3) { animation-delay: 0.36s; }
+
+#waveform { height: 40px; display: flex; align-items: center; justify-content: center; gap: 2px; background: rgba(0,4,10,0.85); border-top: 1px solid #001a2e; padding: 0 20px; flex-shrink: 0; }
+.wave-bar { flex: 1; max-width: 6px; height: 3px; border-radius: 2px; background: #00d4ff; opacity: 0.12; transition: height 0.08s ease; }
+
+#inputbar { background: rgba(0,4,10,0.98); border-top: 1px solid #002a40; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+#mic-btn { width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0; background: rgba(0,212,255,0.08); border: 2px solid #00d4ff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+#mic-btn.listening { background: rgba(255,68,136,0.25); border-color: #ff4488; box-shadow: 0 0 22px rgba(255,68,136,0.6); animation: micPulse 1s ease-in-out infinite; }
+#mic-btn.disabled { opacity: 0.35; cursor: not-allowed; animation: none; }
+#text-input { flex: 1; background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.22); border-radius: 9px; padding: 13px 14px; color: #fff; font-size: 14px; font-family: inherit; outline: none; caret-color: #00d4ff; min-width: 0; }
+#text-input::placeholder { color: rgba(0,212,255,0.3); }
+#send-btn { padding: 13px 14px; background: rgba(0,212,255,0.12); border: 1px solid rgba(0,212,255,0.32); border-radius: 9px; color: #00d4ff; font-size: 10px; cursor: pointer; font-family: inherit; letter-spacing: 1px; flex-shrink: 0; }
+#send-btn.disabled { opacity: 0.3; cursor: not-allowed; background: transparent; }
+#stop-btn { display: none; padding: 13px 13px; background: rgba(255,80,0,0.12); border: 1px solid rgba(255,80,0,0.45); border-radius: 9px; color: #ff5500; font-size: 10px; cursor: pointer; font-family: inherit; letter-spacing: 1px; flex-shrink: 0; }
+
+@keyframes bounce { 0%,100%{transform:translateY(0);opacity:0.35} 50%{transform:translateY(-5px);opacity:1} }
+@keyframes micPulse { 0%,100%{box-shadow:0 0 22px rgba(255,68,136,0.6)} 50%{box-shadow:0 0 38px rgba(255,68,136,0.9)} }
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.18); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div style="display:flex;align-items:center;min-width:0">
+    <div id="arc"><div id="arc-inner"></div></div>
+    <div>
+      <div id="title-name">J.A.R.V.I.S.</div>
+      <div id="status-label">● IN ATTESA</div>
+    </div>
+  </div>
+  <div id="header-right">
+    <button id="memory-btn" onclick="toggleMemory()">🧠 MEM</button>
+    <button id="modules-btn" onclick="toggleModules()">☰ MOD</button>
+  </div>
+</div>
+
+<div id="modules-panel">
+  <div class="panel-label">MODULI MCP ATTIVI</div>
+  <div class="mcp-grid">
+    <button class="mcp-btn" onclick="send('Controlla le mie email urgenti e dimmi cosa richiede attenzione oggi')"><span>📧</span><span>GMAIL</span><span class="mcp-dot"></span></button>
+    <button class="mcp-btn" onclick="send('Mostrami il mio calendario di oggi e i prossimi impegni importanti')"><span>📅</span><span>CALENDAR</span><span class="mcp-dot"></span></button>
+    <button class="mcp-btn" onclick="send('Cerca nei miei documenti Drive materiali utili per i clienti')"><span>💾</span><span>DRIVE</span><span class="mcp-dot"></span></button>
+    <button class="mcp-btn" onclick="send('Crea un design professionale per la mia attività di consulenza')"><span>🎨</span><span>CANVA</span><span class="mcp-dot"></span></button>
+    <button class="mcp-btn" onclick="send('Trova nuovi lead qualificati per la mia consulenza business')"><span>🎯</span><span>VIBE PRO</span><span class="mcp-dot"></span></button>
+    <button class="mcp-btn" onclick="send('Crea contenuti social per posizionarmi come esperto consulente')"><span>📱</span><span>LIGO</span><span class="mcp-dot"></span></button>
+  </div>
+  <div class="panel-label">AZIONI RAPIDE</div>
+  <div class="quick-list">
+    <button class="quick-btn" onclick="send('Guidami in una analisi completa di un business: domande da fare, cosa analizzare, come strutturare il report')">Analisi business →</button>
+    <button class="quick-btn" onclick="send('Crea una proposta commerciale professionale per un nuovo cliente di consulenza')">Proposta cliente →</button>
+    <button class="quick-btn" onclick="send('Costruisci una strategia marketing completa per acquisire nuovi clienti come consulente')">Strategia marketing →</button>
+    <button class="quick-btn" onclick="send('Crea un processo di vendita step by step per convertire lead in clienti paganti')">Pipeline vendite →</button>
+    <button class="quick-btn" onclick="send('Scrivi 5 post LinkedIn ad alto impatto per posizionarmi come esperto business consulting')">Contenuti social →</button>
+    <button class="quick-btn" onclick="send('Scrivi una sequenza di 3 email di follow-up per convertire un prospect in cliente')">Email follow-up →</button>
+  </div>
+</div>
+
+<div id="memory-panel">
+  <div class="panel-label">🧠 MEMORIA DI JARVIS — ciò che sa di te</div>
+  <div id="memory-list"></div>
+  <div id="memory-input-row">
+    <input id="memory-input" placeholder="Aggiungi informazione (es: il mio target sono PMI...)" onkeydown="if(event.key==='Enter')saveMemory()">
+    <button id="memory-save-btn" onclick="saveMemory()">+ SALVA</button>
+    <button id="memory-clear-btn" onclick="clearMemory()">🗑</button>
+  </div>
+</div>
+
+<div id="messages"></div>
+<div id="waveform"></div>
+
+<div id="inputbar">
+  <button id="mic-btn" onclick="toggleMic()">🎤</button>
+  <input id="text-input" type="text" placeholder="Ordine diretto a Jarvis..." onkeydown="if(event.key==='Enter')send(this.value)">
+  <button id="stop-btn" onclick="stopSpeaking()">■ STOP</button>
+  <button id="send-btn" onclick="send(document.getElementById('text-input').value)">INVIA</button>
+</div>
+
+<script>
+const ELEVENLABS_KEY = "sk_6ae6a0ebcf0af5aa43aefb2a5cc0f8d9307675314890d6a7";
+const VOICE_ID = "onwK4e9ZLuTAKqWW03F9";
+const CLAUDE_MODEL = "claude-sonnet-4-20250514";
+
+// ── MEMORIA PERSISTENTE ──
+function loadMemory() {
+  try { return JSON.parse(localStorage.getItem("jarvis_memory") || "[]"); } catch(e) { return []; }
+}
+function saveMemoryList(list) {
+  localStorage.setItem("jarvis_memory", JSON.stringify(list));
+}
+function saveMemory() {
+  const input = document.getElementById("memory-input");
+  const text = input.value.trim();
+  if (!text) return;
+  const list = loadMemory();
+  list.push({ id: Date.now(), text });
+  saveMemoryList(list);
+  input.value = "";
+  renderMemory();
+}
+function deleteMemory(id) {
+  const list = loadMemory().filter(m => m.id !== id);
+  saveMemoryList(list);
+  renderMemory();
+}
+function clearMemory() {
+  if (confirm("Cancellare tutta la memoria di Jarvis?")) {
+    localStorage.removeItem("jarvis_memory");
+    renderMemory();
+  }
+}
+function renderMemory() {
+  const list = loadMemory();
+  const el = document.getElementById("memory-list");
+  el.innerHTML = "";
+  if (list.length === 0) {
+    el.innerHTML = '<div style="font-size:11px;color:rgba(0,212,255,0.35);padding:8px 0">Nessuna memoria salvata. Aggiungi informazioni su di te, i tuoi clienti, il tuo business.</div>';
+    return;
+  }
+  list.forEach(m => {
+    const item = document.createElement("div");
+    item.className = "memory-item";
+    item.innerHTML = `<span>${m.text}</span><button class="memory-del" onclick="deleteMemory(${m.id})">✕</button>`;
+    el.appendChild(item);
+  });
+}
+
+// ── CRONOLOGIA CHAT PERSISTENTE ──
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem("jarvis_history") || "[]"); } catch(e) { return []; }
+}
+function saveHistory(h) {
+  // Salva solo ultimi 40 messaggi per non appesantire
+  const trimmed = h.slice(-40);
+  localStorage.setItem("jarvis_history", JSON.stringify(trimmed));
+}
+
+// ── BUILD SYSTEM PROMPT con memoria ──
+function buildSystem() {
+  const memories = loadMemory();
+  let memBlock = "";
+  if (memories.length > 0) {
+    memBlock = "\n\nINFORMAZIONI CHE SAI SUL SIGNORE (usa sempre queste informazioni nelle tue risposte):\n" +
+      memories.map(m => "- " + m.text).join("\n");
+  }
+  return `Sei J.A.R.V.I.S. (Just A Rather Very Intelligent System), l'assistente AI personale di un consulente business d'élite.
+
+Chiama sempre l'utente "Signore". Rispondi SEMPRE in italiano, tono professionale, preciso, leggermente formale — come il vero Jarvis di Iron Man. Efficiente, brillante, leggermente ironico.
+
+Capacità operative: analisi business e consulenza strategica, marketing e acquisizione clienti, vendite e pipeline, gestione email Gmail, calendario Google Calendar, documenti Google Drive, design Canva, lead generation Vibe Prospecting, social media LiGo.
+
+Regole: sii diretto e utile, per azioni concrete proponi come eseguirle, anticipa il passo successivo. Per le risposte vocali: massimo 3 frasi concise. Inizia con "Signore," quando appropriato.${memBlock}`;
+}
+
+// ── STATO APP ──
+let history = [];
+let currentAudio = null;
+let recognition = null;
+let appStatus = "idle";
+let waveInterval = null;
+
+// Build waveform
+const wf = document.getElementById("waveform");
+for (let i = 0; i < 28; i++) {
+  const b = document.createElement("div");
+  b.className = "wave-bar";
+  b.id = "wb" + i;
+  wf.appendChild(b);
+}
+
+// ── INIT ──
+function init() {
+  renderMemory();
+
+  // Carica cronologia salvata
+  const saved = loadHistory();
+  if (saved.length > 0) {
+    history = saved;
+    // Mostra ultimi 20 messaggi nella UI
+    saved.slice(-20).forEach(m => renderMessage(m.role, m.content));
+    addSystemMsg("Memoria sessione ripristinata — " + saved.length + " messaggi precedenti in contesto.");
+  } else {
+    addMessage("assistant", "Sistemi inizializzati, Signore. Tutti i moduli operativi. Sono pronto a ricevere ordini.");
+  }
+}
+
+function addSystemMsg(text) {
+  const msgs = document.getElementById("messages");
+  const d = document.createElement("div");
+  d.style.cssText = "text-align:center;font-size:9px;letter-spacing:1px;color:rgba(0,212,255,0.3);padding:4px 0";
+  d.textContent = "── " + text + " ──";
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function renderMessage(role, content) {
+  const msgs = document.getElementById("messages");
+  const row = document.createElement("div");
+  row.className = "msg-row" + (role === "user" ? " user" : "");
+
+  const av = document.createElement("div");
+  av.className = "avatar " + (role === "assistant" ? "j" : "s");
+  av.textContent = role === "assistant" ? "J" : "S";
+
+  const bub = document.createElement("div");
+  bub.className = "bubble " + (role === "assistant" ? "j" : "s");
+  if (role === "assistant") {
+    const lbl = document.createElement("div");
+    lbl.className = "bubble-label";
+    lbl.textContent = "J.A.R.V.I.S.";
+    bub.appendChild(lbl);
+  }
+  const txt = document.createElement("span");
+  txt.textContent = content;
+  bub.appendChild(txt);
+
+  row.appendChild(av);
+  row.appendChild(bub);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function addMessage(role, content) {
+  renderMessage(role, content);
+  history.push({ role, content });
+  saveHistory(history);
+}
+
+function showThinking() {
+  const msgs = document.getElementById("messages");
+  const row = document.createElement("div");
+  row.className = "msg-row";
+  row.id = "thinking-row";
+  const av = document.createElement("div");
+  av.className = "avatar j";
+  av.textContent = "J";
+  const bub = document.createElement("div");
+  bub.className = "bubble j thinking";
+  bub.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+  row.appendChild(av);
+  row.appendChild(bub);
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function removeThinking() {
+  const t = document.getElementById("thinking-row");
+  if (t) t.remove();
+}
+
+// ── SET STATUS ──
+function setStatus(s) {
+  appStatus = s;
+  const colors = { idle: "#00d4ff", thinking: "#ffaa00", speaking: "#00ff88", listening: "#ff4488" };
+  const labels = { idle: "● IN ATTESA", thinking: "● ELABORAZIONE...", speaking: "● IN RISPOSTA", listening: "● IN ASCOLTO — PARLA ORA" };
+  const c = colors[s];
+
+  document.getElementById("arc").style.borderColor = c;
+  document.getElementById("arc").style.boxShadow = `0 0 14px ${c}55`;
+  document.getElementById("arc-inner").style.background = c;
+  document.getElementById("arc-inner").style.boxShadow = `0 0 10px ${c}`;
+  document.getElementById("status-label").style.color = c;
+  document.getElementById("status-label").textContent = labels[s];
+
+  const mb = document.getElementById("mic-btn");
+  mb.className = s === "listening" ? "listening" : (s === "thinking" ? "disabled" : "");
+
+  document.getElementById("stop-btn").style.display = s === "speaking" ? "block" : "none";
+  document.getElementById("send-btn").style.display = s === "speaking" ? "none" : "block";
+  document.getElementById("send-btn").className = (s === "thinking" || s === "listening") ? "disabled" : "";
+  document.getElementById("text-input").disabled = (s === "listening" || s === "thinking");
+  document.getElementById("text-input").placeholder = s === "listening" ? "Sto ascoltando..." : "Ordine diretto a Jarvis...";
+
+  clearInterval(waveInterval);
+  if (s === "speaking" || s === "listening") {
+    waveInterval = setInterval(() => {
+      for (let i = 0; i < 28; i++) {
+        const bar = document.getElementById("wb" + i);
+        if (bar) { bar.style.height = (Math.random() * 30 + 4) + "px"; bar.style.opacity = "0.75"; bar.style.background = c; }
+      }
+    }, 75);
+  } else {
+    for (let i = 0; i < 28; i++) {
+      const bar = document.getElementById("wb" + i);
+      if (bar) { bar.style.height = "3px"; bar.style.opacity = "0.12"; bar.style.background = "#00d4ff"; }
+    }
+  }
+}
+
+// ── SPEAK ──
+async function speak(text) {
+  setStatus("speaking");
+  try {
+    let vocal = text.replace(/\*\*/g, "").replace(/\*/g, "").replace(/#{1,3} /g, "").replace(/\n/g, " ");
+    if (vocal.length > 480) {
+      const cut = vocal.substring(0, 480);
+      const last = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
+      vocal = last > 80 ? cut.substring(0, last + 1) : cut;
+    }
+    const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`, {
+      method: "POST",
+      headers: { "xi-api-key": ELEVENLABS_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: vocal,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: { stability: 0.45, similarity_boost: 0.88, style: 0.25, use_speaker_boost: true }
+      })
+    });
+    if (!res.ok) { console.error("EL", res.status); setStatus("idle"); return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    currentAudio = new Audio(url);
+    currentAudio.onended = () => { setStatus("idle"); URL.revokeObjectURL(url); };
+    currentAudio.onerror = () => setStatus("idle");
+    await currentAudio.play();
+  } catch (e) { console.error("speak", e); setStatus("idle"); }
+}
+
+function stopSpeaking() {
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  setStatus("idle");
+}
+
+// ── SEND ──
+async function send(text) {
+  text = (text || "").trim();
+  if (!text || appStatus === "thinking") return;
+
+  if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+
+  document.getElementById("text-input").value = "";
+  document.getElementById("modules-panel").classList.remove("open");
+  document.getElementById("memory-panel").classList.remove("open");
+
+  addMessage("user", text);
+  setStatus("thinking");
+  showThinking();
+
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: CLAUDE_MODEL,
+        max_tokens: 1024,
+        system: buildSystem(),
+        messages: history.map(m => ({ role: m.role, content: m.content }))
+      })
+    });
+    removeThinking();
+    if (!res.ok) throw new Error("Claude " + res.status);
+    const data = await res.json();
+    const reply = data.content?.[0]?.text || "Richiesta non elaborata, Signore.";
+    addMessage("assistant", reply);
+    setStatus("idle");
+    await speak(reply);
+  } catch (e) {
+    removeThinking();
+    console.error("send", e);
+    const err = "Connessione interrotta, Signore. Verifico i sistemi.";
+    addMessage("assistant", err);
+    setStatus("idle");
+    await speak(err);
+  }
+}
+
+// ── MICROFONO ──
+function toggleMic() {
+  if (appStatus === "thinking") return;
+  if (appStatus === "listening") {
+    if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
+    setStatus("idle");
+    return;
+  }
+  if (appStatus === "speaking") stopSpeaking();
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    alert("Riconoscimento vocale non supportato.\nUsa Chrome su Android o Safari su iPhone.\nAlternativa: scrivi nella casella di testo.");
+    return;
+  }
+
+  recognition = new SR();
+  recognition.lang = "it-IT";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => setStatus("listening");
+  recognition.onresult = (e) => {
+    const t = e.results[0]?.[0]?.transcript || "";
+    recognition = null;
+    setStatus("idle");
+    if (t.trim()) send(t);
+  };
+  recognition.onerror = (e) => {
+    console.warn("Speech:", e.error);
+    recognition = null;
+    setStatus("idle");
+    if (e.error === "not-allowed") alert("Permesso microfono negato.\nVai in Impostazioni Chrome → Microfono e abilita l'accesso per questa pagina.");
+    else if (e.error !== "no-speech") alert("Errore microfono: " + e.error);
+  };
+  recognition.onend = () => {
+    recognition = null;
+    if (appStatus === "listening") setStatus("idle");
+  };
+
+  try { recognition.start(); }
+  catch(e) { console.error(e); recognition = null; setStatus("idle"); }
+}
+
+// ── PANNELLI ──
+function toggleModules() {
+  const p = document.getElementById("modules-panel");
+  const b = document.getElementById("modules-btn");
+  const mp = document.getElementById("memory-panel");
+  mp.classList.remove("open");
+  if (p.classList.contains("open")) { p.classList.remove("open"); b.textContent = "☰ MOD"; }
+  else { p.classList.add("open"); b.textContent = "✕ MOD"; }
+}
+function toggleMemory() {
+  const p = document.getElementById("memory-panel");
+  const b = document.getElementById("memory-btn");
+  const mp = document.getElementById("modules-panel");
+  mp.classList.remove("open");
+  document.getElementById("modules-btn").textContent = "☰ MOD";
+  if (p.classList.contains("open")) { p.classList.remove("open"); b.textContent = "🧠 MEM"; }
+  else { p.classList.add("open"); b.textContent = "✕ MEM"; renderMemory(); }
+}
+
+init();
+</script>
+</body>
+</html>
